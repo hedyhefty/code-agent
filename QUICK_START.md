@@ -1,14 +1,15 @@
-# Code Agent - 第1步
+# Code Agent - 第2步：持久化版
 
-基于LLM的CLI对话工具，这是实现编码Agent的第一步。
+基于LLM的CLI对话工具，这是实现编码Agent的第2步，增加了对话历史持久化功能。
 
 ## 功能特点
 
 - ✅ 流式对话输出（实时显示）
-- ✅ 对话历史管理
+- ✅ **对话历史持久化**（自动保存到JSON文件）
+- ✅ **会话管理**（创建、加载、查看历史会话）
 - ✅ 支持系统提示词
 - ✅ 彩色终端界面（使用rich库）
-- ✅ 基本命令支持（help, history, clear, quit）
+- ✅ 命令支持（sessions, load, new, quit）
 
 ## 安装依赖
 
@@ -44,10 +45,25 @@ python main.py
 
 1. **直接输入问题** - 开始与AI助手对话
 2. **使用命令**：
-   - `help` - 显示帮助信息
-   - `history` - 显示对话历史
-   - `clear` - 清空对话历史
-   - `quit` 或 `exit` - 退出程序
+   - `sessions` - 查看所有历史会话ID
+   - `load <session_id>` - 加载指定历史会话
+   - `new` - 开始新会话
+   - `quit` 或 `exit` 或 `q` - 退出程序
+
+### 示例
+```
+🤖 Code Agent - 持久化版
+输入 'quit' 退出 | 'new' 开启新会话 | 'sessions' 查看历史 | 'load <id>' 加载
+
+你: sessions
+历史会话: ['2026-03-12_012046', '2026-03-12_012324']
+
+你: load 2026-03-12_012324
+已加载会话: 2026-03-12_012324
+
+你: 我们之前聊了什么？
+助手: 我们之前打了招呼，你说了"hi"，我回复了问候...
+```
 
 ## 项目结构
 
@@ -55,9 +71,12 @@ python main.py
 code-agent/
 ├── main.py              # 主程序入口
 ├── src/
-│   └── llm_client.py   # LLM API客户端
-├── requirements.txt     # Python依赖
-└── README.md           # 项目说明
+│   ├── llm_client.py   # LLM API客户端
+│   └── history_manager.py # 历史记录管理器
+├── history/            # 历史会话存储目录
+│   └── *.json         # 会话历史文件
+├── requirements.txt    # Python依赖
+└── README.md          # 项目说明
 ```
 
 ## 技术栈
@@ -66,13 +85,14 @@ code-agent/
 - **OpenAI SDK** - 用于调用LLM API（兼容OpenAI格式）
 - **Rich** - 终端美化库
 - **python-dotenv** - 环境变量管理
+- **JSON文件存储** - 对话历史持久化
 
 ## 开发计划
 
-这是8步计划中的第1步，后续步骤包括：
+这是8步计划中的第2步，后续步骤包括：
 
-1. ✅ 基础CLI对话界面（当前步骤）
-2. 对话历史持久化
+1. ✅ 基础CLI对话界面
+2. ✅ 对话历史持久化（当前步骤）
 3. Tool Use / Function Calling
 4. 安全代码执行工具
 5. 文件系统工具集
@@ -83,6 +103,7 @@ code-agent/
 ## 注意事项
 
 - 请妥善保管你的API密钥
+- 历史会话保存在`history/`目录下的JSON文件中
 - 本工具仅用于学习和开发目的
 - 流式输出需要终端支持ANSI转义序列
 

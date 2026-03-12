@@ -18,7 +18,7 @@ class ChatCLI:
     def print_welcome(self):
         console.print(Panel.fit(
             "[bold cyan]🤖 Code Agent - 持久化版[/bold cyan]\n"
-            "[yellow]输入 'quit' 退出 | 'clear' 清空 | 'sessions' 查看历史 | 'load <id>' 加载[/yellow]",
+            "[yellow]输入 'quit' 退出 | 'new' 开启新会话 | 'sessions' 查看历史 | 'load <id>' 加载[/yellow]",
             border_style="cyan"
         ))
 
@@ -46,9 +46,9 @@ class ChatCLI:
                 if cmd in ['quit', 'exit', 'q']:
                     console.print("[yellow]再见！[/yellow]")
                     self.running = False
-                elif cmd == 'clear':
+                elif cmd == 'new':
                     self.client.history.start_new_session(self.system_prompt)
-                    console.print("[green]对话已重置[/green]")
+                    console.print("[green]已开启新会话[/green]")
                 elif cmd == 'sessions':
                     sessions = self.client.history.list_sessions()
                     console.print(f"[blue]历史会话: {sessions}[/blue]")

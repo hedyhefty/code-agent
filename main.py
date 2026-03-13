@@ -1,4 +1,6 @@
 import asyncio
+from platform import libc_ver
+
 from rich.console import Console
 from rich.live import Live
 from rich.markdown import Markdown
@@ -23,12 +25,19 @@ class ChatCLI:
         ))
 
     async def handle_chat(self, user_input: str):
-        full_text = ""
+        full_text = "🤔 思考中..."  # 初始值
         console.print("[bold cyan]助手[/bold cyan]")
 
         # 使用 vertical_overflow="visible" 解决长文本卡顿问题
         with Live(Markdown(""), console=console, refresh_per_second=4, vertical_overflow="visible") as live:
+            live.update(Markdown(full_text))
             async for chunk in self.client.chat_stream(user_input, self.system_prompt):
+                # --- 新增：拦截擦除暗号 ---
+                if chunk == "<CLEAR_THINKING>":
+                    full_text = full_text.replace("🤔 思考中...", "")
+                    live.update(Markdown(full_text))
+                    continue  # 跳过这一轮，不要把暗号加到 full_text 里
+
                 if chunk:
                     full_text += chunk
                     live.update(Markdown(full_text))

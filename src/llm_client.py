@@ -1,35 +1,15 @@
 import os
-import json
-from datetime import datetime
 from collections.abc import AsyncGenerator
 
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
 
-from src.history_manager import HistoryManager
+from .history_manager import HistoryManager
+from .tool_manager import ToolManager
 
 # 加载环境变量
 load_dotenv()
 
-# ==========================================
-# 阶段2：硬编码工具定义（跑通闭环用）
-# ==========================================
-TIME_TOOL_SCHEMA = [{
-    "type": "function",
-    "function": {
-        "name": "get_current_time",
-        "description": "当用户询问当前时间、日期或今天几号时使用",
-        "parameters": {"type": "object", "properties": {}}
-    }
-}]
-
-
-def get_current_time():
-    """本地真正的执行逻辑"""
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-
-# ==========================================
 
 class LLMClient:
     def __init__(self):
@@ -44,6 +24,7 @@ class LLMClient:
         self.model = model
         self.history = HistoryManager(storage_dir="history")
         self.max_history = 20
+        self.tool_manager = ToolManager()
 
     async def chat_stream(self, user_input: str, system_prompt: str = None) -> AsyncGenerator[str, None]:
         if not self.history.current_session_id:
@@ -59,7 +40,7 @@ class LLMClient:
                 model=self.model,
                 messages=context,
                 stream=True,
-                tools=TIME_TOOL_SCHEMA,
+                tools=self.tool_manager.get_schemas(),
                 tool_choice="auto"
             )
 
@@ -108,13 +89,10 @@ class LLMClient:
                 # 2. 执行工具
                 for tc in formatted_tool_calls:
                     func_name = tc["function"]["name"]
+                    args = tc["function"]["arguments"]
                     yield f"\n\n> ⚙️ **调用本地工具**: `{func_name}`\n\n"
 
-                    if func_name == "get_current_time":
-                        result = get_current_time()
-                    else:
-                        result = f"Error: Tool {func_name} not found"
-
+                    result = self.tool_manager.call_tool(func_name, args)
                     self.history.save_message(role="tool", content=str(result), tool_call_id=tc["id"], name=func_name)
 
                 # 3. 递归调用自身：让 AI 根据工具结果再次生成回答（这次依然是流式的）

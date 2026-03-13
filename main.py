@@ -14,6 +14,7 @@ console = Console()
 class ChatCLI:
     def __init__(self):
         self.client = LLMClient()
+
         self.running = True
         self.system_prompt = "你是一个有帮助的AI助手。请用中文回答用户的问题。"
 
@@ -23,6 +24,13 @@ class ChatCLI:
             "[yellow]输入 'quit' 退出 | 'new' 开启新会话 | 'sessions' 查看历史 | 'load <id>' 加载[/yellow]",
             border_style="cyan"
         ))
+
+    def print_loaded_tools(self):
+        tools = self.client.tool_manager.get_schemas()
+        if not tools:
+            console.print("[red]警告：没有加载到任何工具！请检查 tools/ 目录是否存在以及 __init__.py 是否就位。[/red]")
+        else:
+            console.print(f"[green]成功加载 {len(tools)} 个工具：{[t['function']['name'] for t in tools]}[/green]")
 
     async def handle_chat(self, user_input: str):
         full_text = "🤔 思考中..."  # 初始值
@@ -45,6 +53,8 @@ class ChatCLI:
 
     async def chat_loop(self):
         self.print_welcome()
+        self.print_loaded_tools()
+
         while self.running:
             try:
                 user_input = Prompt.ask("[bold green]你[/bold green]").strip()

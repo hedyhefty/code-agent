@@ -1,7 +1,7 @@
 #!/bin/bash
 # Code Agent 启动脚本
 
-echo "🚀 启动 Code Agent - 第2步：持久化版"
+echo "🚀 启动 Code Agent - 第3步：工具调用版（含ReAct循环）"
 
 # 检查虚拟环境
 if [ ! -d "venv" ]; then
@@ -32,6 +32,14 @@ if [ ! -f ".env" ]; then
     exit 1
 fi
 
+# 检查工具目录
+echo "🔧 检查工具系统..."
+if [ ! -d "tools" ]; then
+    echo "⚠️  警告: tools 目录不存在"
+    echo "工具系统需要 tools/ 目录来存放工具实现"
+    exit 1
+fi
+
 # 运行主程序
-echo "🤖 启动 CLI 对话界面..."
+echo "🤖 启动 CLI 对话界面（支持工具调用和ReAct循环）..."
 python main.py

@@ -1,6 +1,6 @@
-# Code Agent - 第2步：持久化版
+# Code Agent - 第3步：工具调用版（含ReAct循环）
 
-基于LLM的CLI对话工具，这是实现编码Agent的第2步，增加了对话历史持久化功能。
+基于LLM的CLI对话工具，这是实现编码Agent的第3步，增加了工具调用系统和ReAct循环功能。
 
 ## 功能特点
 
@@ -10,6 +10,9 @@
 - ✅ 支持系统提示词
 - ✅ 彩色终端界面（使用rich库）
 - ✅ 命令支持（sessions, load, new, quit）
+- ✅ **工具调用系统** - 支持动态加载和执行工具（时间、计算等）
+- ✅ **ReAct循环架构** - 多轮推理，自动工具调用与结果整合
+- ✅ **日志系统** - 文件日志与终端分离
 
 ## 安装依赖
 
@@ -52,7 +55,7 @@ python main.py
 
 ### 示例
 ```
-🤖 Code Agent - 持久化版
+🤖 Code Agent - 工具调用版
 输入 'quit' 退出 | 'new' 开启新会话 | 'sessions' 查看历史 | 'load <id>' 加载
 
 你: sessions
@@ -65,16 +68,31 @@ python main.py
 助手: 我们之前打了招呼，你说了"hi"，我回复了问候...
 ```
 
+### 工具使用示例
+```
+你: 现在几点了？
+助手: 当前时间: 2026-03-15 01:45:23
+
+你: 计算 15 * (3 + 7)
+助手: 15 * (3 + 7) = 150
+```
+
 ## 项目结构
 
 ```
 code-agent/
-├── main.py              # 主程序入口
+├── main.py              # 主程序入口（集成ReAct循环）
 ├── src/
-│   ├── llm_client.py   # LLM API客户端
-│   └── history_manager.py # 历史记录管理器
+│   ├── llm_client.py   # LLM客户端（支持ReAct循环）
+│   ├── history_manager.py # 历史记录管理器
+│   ├── tool_manager.py # 工具管理器（动态加载）
+│   ├── base_tool.py    # 工具抽象基类
+│   └── logger.py       # 日志系统配置
+├── tools/              # 工具实现目录
+│   ├── time_tool.py    # 时间工具
+│   └── calc_tool.py    # 计算工具
 ├── history/            # 历史会话存储目录
-│   └── *.json         # 会话历史文件
+├── logs/               # 日志文件存储目录
 ├── requirements.txt    # Python依赖
 └── README.md          # 项目说明
 ```
@@ -86,17 +104,20 @@ code-agent/
 - **Rich** - 终端美化库
 - **python-dotenv** - 环境变量管理
 - **JSON文件存储** - 对话历史持久化
+- **工具系统架构** - 动态加载和执行的工具框架
+- **logging模块** - 专业日志记录系统
+- **ReAct模式** - Reasoning and Acting循环架构
 
 ## 开发计划
 
-这是8步计划中的第2步，后续步骤包括：
+这是8步计划中的第3步，后续步骤包括：
 
 1. ✅ 基础CLI对话界面
-2. ✅ 对话历史持久化（当前步骤）
-3. Tool Use / Function Calling
+2. ✅ 对话历史持久化
+3. ✅ Tool Use / Function Calling（当前步骤）
 4. 安全代码执行工具
 5. 文件系统工具集
-6. ReAct / Agent循环
+6. ✅ ReAct / Agent循环
 7. CLI交互体验升级
 8. 代码库上下文优化
 
@@ -104,6 +125,8 @@ code-agent/
 
 - 请妥善保管你的API密钥
 - 历史会话保存在`history/`目录下的JSON文件中
+- 日志文件保存在`logs/`目录下，按日期分割
+- 计算工具使用`eval()`函数，生产环境建议替换为安全计算库
 - 本工具仅用于学习和开发目的
 - 流式输出需要终端支持ANSI转义序列
 

@@ -1,7 +1,7 @@
 """
-日志配置模块 - 类似 Java @Slf4j 的功能
+日志配置模块
 
-由于 rich.live 占用了标准输出（STDOUT），将调试信息和运行日志重定向到文件是最佳实践。
+由于 rich.live 占用了标准输出（STDOUT），将调试信息和运行日志重定向到文件
 """
 
 import logging
@@ -46,7 +46,6 @@ def setup_logging():
     return logger
 
 
-# 获取全局 logger（类似 Java 的静态 log 变量）
 logger = logging.getLogger("CodeAgent")
 
 

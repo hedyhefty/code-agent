@@ -56,14 +56,11 @@ class LLMClient:
 
                 # 情况 A：处理普通文本流
                 if delta.content:
-                    # 如果之前有“思考中”，在这里给 main.py 发暗号擦除
-                    yield "<CLEAR_THINKING>"
                     full_response_content += delta.content
                     yield delta.content
 
                 # 情况 B：处理工具调用流（碎片化的）
                 elif delta.tool_calls:
-                    yield "<CLEAR_THINKING>"  # 触发工具也要擦除思考中
                     for tc_chunk in delta.tool_calls:
                         idx = tc_chunk.index
                         if idx not in tool_calls_buffer:

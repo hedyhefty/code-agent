@@ -46,8 +46,12 @@ class LLMClient:
 
             full_response_content = ""
             tool_calls_buffer = {}  # 用于暂存流式传回的工具信息
+            thinking_cleared = False
 
             async for chunk in response:
+                if not thinking_cleared:
+                    thinking_cleared = True
+                    yield "<CLEAR_THINKING>"
                 delta = chunk.choices[0].delta
 
                 # 情况 A：处理普通文本流

@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from platform import libc_ver
 
 from rich.console import Console
@@ -7,6 +8,12 @@ from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.prompt import Prompt
 from src.llm_client import LLMClient
+from src.logger import setup_logging
+
+# 初始化日志系统
+setup_logging()
+logger = logging.getLogger("CodeAgent.main")
+logger.info("Code Agent 主程序启动")
 
 console = Console()
 

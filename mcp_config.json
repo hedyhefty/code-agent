@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "local_tools": {
+      "command": "python",
+      "args": ["tools/time_tools_server.py"]
+    }
+  }
+}

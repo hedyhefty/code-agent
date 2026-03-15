@@ -10,7 +10,6 @@ from rich.prompt import Prompt
 from src.llm_client import LLMClient
 from src.logger import setup_logging
 
-# 初始化日志系统
 setup_logging()
 logger = logging.getLogger("CodeAgent.main")
 logger.info("Code Agent 主程序启动")
@@ -21,37 +20,35 @@ console = Console()
 class ChatCLI:
     def __init__(self):
         self.client = LLMClient()
-
         self.running = True
         self.system_prompt = "你是一个有帮助的AI助手。请用中文回答用户的问题。"
 
     def print_welcome(self):
         console.print(Panel.fit(
-            "[bold cyan]🤖 Code Agent - 持久化版[/bold cyan]\n"
+            "[bold cyan]🤖 Code Agent - MCP 架构演进版[/bold cyan]\n"
             "[yellow]输入 'quit' 退出 | 'new' 开启新会话 | 'sessions' 查看历史 | 'load <id>' 加载[/yellow]",
             border_style="cyan"
         ))
 
     def print_loaded_tools(self):
-        tools = self.client.tool_manager.get_schemas()
+        tools = self.client.mcp_client.get_schemas()
         if not tools:
-            console.print("[red]警告：没有加载到任何工具！请检查 tools/ 目录是否存在以及 __init__.py 是否就位。[/red]")
+            console.print("[red]警告：没有加载到任何工具！请检查 mcp_config.json 配置。[/red]")
         else:
-            console.print(f"[green]成功加载 {len(tools)} 个工具：{[t['function']['name'] for t in tools]}[/green]")
+            console.print(
+                f"[green]成功通过 MCP 挂载 {len(tools)} 个工具：{[t['function']['name'] for t in tools]}[/green]")
 
     async def handle_chat(self, user_input: str):
-        full_text = "🤔 思考中..."  # 初始值
+        full_text = "🤔 思考中..."
         console.print("[bold cyan]助手[/bold cyan]")
 
-        # 使用 vertical_overflow="visible" 解决长文本卡顿问题
         with Live(Markdown(""), console=console, refresh_per_second=4, vertical_overflow="visible") as live:
             live.update(Markdown(full_text))
             async for chunk in self.client.chat_stream(user_input, self.system_prompt):
-                # --- 新增：拦截擦除暗号 ---
                 if chunk == "<CLEAR_THINKING>":
                     full_text = full_text.replace("🤔 思考中...", "")
                     live.update(Markdown(full_text))
-                    continue  # 跳过这一轮，不要把暗号加到 full_text 里
+                    continue
 
                 if chunk:
                     full_text += chunk
@@ -60,17 +57,19 @@ class ChatCLI:
 
     async def chat_loop(self):
         self.print_welcome()
+
+        # --- 核心改动：在进入循环前启动所有的 MCP Server ---
+        await self.client.startup()
         self.print_loaded_tools()
 
-        while self.running:
-            try:
+        try:
+            while self.running:
                 user_input = Prompt.ask("[bold green]你[/bold green]").strip()
                 if not user_input: continue
 
-                # --- 新增：命令路由 ---
                 cmd = user_input.lower()
                 if cmd in ['quit', 'exit', 'q']:
-                    console.print("[yellow]再见！[/yellow]")
+                    console.print("[yellow]再见！正在清理资源...[/yellow]")
                     self.running = False
                 elif cmd == 'new':
                     self.client.history.start_new_session(self.system_prompt)
@@ -85,13 +84,12 @@ class ChatCLI:
                     else:
                         console.print("[red]会话不存在[/red]")
                 else:
-                    # --- 普通对话 ---
                     await self.handle_chat(user_input)
-
-            except KeyboardInterrupt:
-                break
-            except Exception as e:
-                console.print(f"[red]运行错误: {e}[/red]")
+        except KeyboardInterrupt:
+            console.print("\n[yellow]强制退出，正在清理资源...[/yellow]")
+        finally:
+            # --- 核心改动：确保程序退出时杀掉所有的外部 Server 进程 ---
+            await self.client.mcp_client.close()
 
 
 async def main():

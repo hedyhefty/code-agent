@@ -2,11 +2,23 @@
   "mcpServers": {
     "time_tools": {
       "command": "python3",
-      "args": ["tools/time_tools_server.py"]
+      "args": [
+        "tools/time_tools_server.py"
+      ]
     },
     "code_executor": {
       "command": "python3",
-      "args": ["tools/code_executor_server.py"]
+      "args": [
+        "tools/code_executor_server.py"
+      ]
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "${AGENT_WORKSPACE}"
+      ]
     }
   }
 }

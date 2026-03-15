@@ -32,3 +32,4 @@ venv.bak/
 Thumbs.db
 /.idea
 /history
+/agent-workspace/

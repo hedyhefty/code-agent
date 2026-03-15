@@ -25,8 +25,8 @@ class LLMClient:
         self.client = AsyncOpenAI(api_key=api_key, base_url=base_url)
         self.model = model
         self.history = HistoryManager(storage_dir="history")
-        self.max_history = 20
-        self.max_steps = 5
+        self.max_history = 100
+        self.max_steps = 20
 
         # 实例化，但不立即启动连接
         self.mcp_client = MCPClient()

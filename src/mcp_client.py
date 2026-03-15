@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 from contextlib import AsyncExitStack
 from typing import Dict, List
 
@@ -20,7 +21,19 @@ class MCPClient:
         """读取配置并连接所有 MCP Servers"""
         try:
             with open(config_path, 'r', encoding='utf-8') as f:
-                config = json.load(f)
+                # 1. 读取原始字符串
+                config_str = f.read()
+
+                # 2. 执行替换 (确保 .env 里的变量已加载，因为你在 llm_client.py 顶部已经 load_dotenv() 了)
+                # 注意：这里我们替换所有匹配的占位符
+                if "${AGENT_WORKSPACE}" in config_str:
+                    workspace = os.getenv("AGENT_WORKSPACE")
+                    if not workspace:
+                        raise ValueError("环境变量 AGENT_WORKSPACE 未设置，请在 .env 中配置它")
+                    config_str = config_str.replace("${AGENT_WORKSPACE}", workspace)
+
+                # 3. 将替换后的字符串转为字典
+                config = json.loads(config_str)
         except FileNotFoundError:
             logger.warning(f"未找到配置文件 {config_path}，当前无工具可用。")
             return

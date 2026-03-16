@@ -2,6 +2,7 @@ import json
 import logging
 import os
 from contextlib import AsyncExitStack
+from pathlib import Path
 from typing import Dict, List
 
 from mcp import ClientSession, StdioServerParameters
@@ -17,8 +18,26 @@ class MCPClient:
         self._tool_registry: Dict[str, dict] = {}
         logger.info("MCP Client核心已启动")
 
-    async def load_tools(self, config_path: str = "mcp_config.json"):
+    def get_project_root(self) -> Path:
+        """自动向上搜索，直到找到包含 mcp_config.json 的根目录"""
+        # 从当前脚本所在位置开始向上搜索
+        current_path = Path(__file__).resolve().parent
+
+        # 向上寻找直到找到根目录（例如通过查找 .git 或特定的配置文件）
+        # 这里我们查找 config 所在的目录
+        for parent in [current_path] + list(current_path.parents):
+            if (parent / "mcp_config.json").exists():
+                return parent
+
+        # 如果找不到，返回当前目录作为兜底
+        return current_path
+
+    async def load_tools(self, config_filename: str = "mcp_config.json"):
         """读取配置并连接所有 MCP Servers"""
+        project_root = self.get_project_root()
+        # 2. 拼接出配置文件的绝对路径
+        # 如果你的配置文件就在项目根目录下
+        config_path = project_root / config_filename
         try:
             with open(config_path, 'r', encoding='utf-8') as f:
                 # 1. 读取原始字符串
@@ -27,10 +46,16 @@ class MCPClient:
                 # 2. 执行替换 (确保 .env 里的变量已加载，因为你在 llm_client.py 顶部已经 load_dotenv() 了)
                 # 注意：这里我们替换所有匹配的占位符
                 if "${AGENT_WORKSPACE}" in config_str:
-                    workspace = os.getenv("AGENT_WORKSPACE")
+                    workspace = os.getcwd()
                     if not workspace:
-                        raise ValueError("环境变量 AGENT_WORKSPACE 未设置，请在 .env 中配置它")
+                        raise ValueError(f"设置工作区间异常，os.getcwd()={os.getcwd()}")
                     config_str = config_str.replace("${AGENT_WORKSPACE}", workspace)
+
+                if "${PROJECT_DIR}" in config_str:
+                    project_dir = os.getenv("PROJECT_DIR")
+                    if not project_dir:
+                        raise ValueError("环境变量 PROJECT_DIR 未设置，请在 .env 中配置它")
+                    config_str = config_str.replace("${PROJECT_DIR}", project_dir)
 
                 # 3. 将替换后的字符串转为字典
                 config = json.loads(config_str)

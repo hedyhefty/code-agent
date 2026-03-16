@@ -77,7 +77,7 @@ def run_script_file(host_workspace: str, file_path: str, args: Optional[List[str
     在隔离的容器中执行工作区内的 Python 脚本。
     注意：此工具会自动处理宿主机到容器的路径映射。你只需要提供相对于 workspace 根目录的相对路径即可。
 
-    :param host_workspace: 工作区的路径（例如：'/User/somebody/AgentWorkspace'）
+    :param host_workspace: 工作空间的路径
     :param file_path: 脚本相对于工作区的路径 (例如: 'project/hello.py')
     :param args: 命令行参数列表 (例如: ['--verbose', '10'])
     """

@@ -15,14 +15,15 @@ def setup_logging():
     
     注意：这里不添加 StreamHandler，避免日志冲刷到控制台破坏 Live 界面
     """
+    project_dir = os.getenv("PROJECT_DIR")
     # 确保 logs 目录存在
-    log_dir = "logs"
+    log_dir = f"{project_dir}/logs"
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-    
+
     # 生成日志文件名，例如 logs/agent_20240314.log
     log_file = os.path.join(log_dir, f"agent_{datetime.now().strftime('%Y%m%d')}.log")
-    
+
     # 全局配置日志
     logging.basicConfig(
         level=logging.INFO,
@@ -35,12 +36,12 @@ def setup_logging():
             # 否则日志会再次冲刷到控制台破坏 Live 界面
         ]
     )
-    
+
     # 设置更详细的日志级别
     logging.getLogger("CodeAgent").setLevel(logging.DEBUG)
     # 设置 src 模块的日志级别
     logging.getLogger("src").setLevel(logging.DEBUG)
-    
+
     logger = logging.getLogger("CodeAgent")
     logger.info(f"日志系统初始化完成，日志文件: {log_file}")
     return logger

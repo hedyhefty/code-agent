@@ -6,9 +6,10 @@ from typing import List
 
 class HistoryManager:
     def __init__(self, storage_dir="history"):
-        self.storage_dir = storage_dir
-        if not os.path.exists(storage_dir):
-            os.makedirs(storage_dir)
+        project_dir = os.getenv("PROJECT_DIR")
+        self.storage_dir = f"{project_dir}/{storage_dir}"
+        if not os.path.exists(self.storage_dir):
+            os.makedirs(self.storage_dir)
         self.current_session_id = None
         self.current_messages = []
 

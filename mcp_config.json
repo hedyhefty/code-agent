@@ -3,13 +3,13 @@
     "time_tools": {
       "command": "python3",
       "args": [
-        "tools/time_tools_server.py"
+        "${PROJECT_DIR}/tools/time_tools_server.py"
       ]
     },
     "code_executor": {
       "command": "python3",
       "args": [
-        "tools/code_executor_server.py"
+        "${PROJECT_DIR}/tools/code_executor_server.py"
       ]
     },
     "filesystem": {

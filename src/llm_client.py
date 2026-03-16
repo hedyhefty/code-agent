@@ -1,15 +1,12 @@
 import logging
 import os
-import json
 from collections.abc import AsyncGenerator
 
-from dotenv import load_dotenv
 from openai import AsyncOpenAI
 
 from .history_manager import HistoryManager
 from .mcp_client import MCPClient
 
-load_dotenv()
 logger = logging.getLogger(__name__)
 
 

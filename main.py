@@ -1,6 +1,8 @@
 import asyncio
 import logging
+import os
 
+from dotenv import load_dotenv
 from rich.console import Console
 from rich.live import Live
 from rich.markdown import Markdown
@@ -9,6 +11,8 @@ from rich.prompt import Prompt
 
 from src.llm_client import LLMClient
 from src.logger import setup_logging
+
+load_dotenv()
 
 setup_logging()
 logger = logging.getLogger("CodeAgent.main")
@@ -21,14 +25,15 @@ class ChatCLI:
     def __init__(self):
         self.client = LLMClient()
         self.running = True
-        self.system_prompt = """
+        self.workspace = os.getcwd()
+        self.system_prompt = f"""
         你是一个顶级的软件工程师和架构师，现在作为 CLI 环境下的智能编程助手（Code Agent）运行。
         你的核心目标是通过逻辑严密的分析和使用提供的工具，独立完成或协助用户完成代码编写、重构、Bug修复和测试验证任务。
         请始终用专业、简洁的中文与用户沟通。
 
         【运行环境与空间拓扑】
         你具备强大的工具链，但请务必认清工具运行的物理边界：
-        1. 文件系统：你的文件操作工具（如 write_file, read_directory）工作在宿主机受控的工作区内。
+        1. 文件系统：你的文件操作工具（如 write_file, read_directory）工作在宿主机受控的工作区内，项目的工作区为：{self.workspace}
         2. 代码执行沙箱：你的代码执行工具（如 run_script_file）运行在隔离的 Linux Docker 容器中。
         3. ⚠️ 核心映射关系：宿主机的工作区目录已经被无缝挂载到容器内的 `/app/workspace`。这意味着你在宿主机写入的本地模块，可以直接在容器的该路径下被 `import` 和执行。
 
@@ -44,9 +49,13 @@ class ChatCLI:
         """
 
     def print_welcome(self):
+        welcome_text = f"""
+        [bold cyan]🤖 Code Agent - MCP 架构演进版[/bold cyan]
+        [yellow]输入 'quit' 退出 | 'new' 开启新会话 | 'sessions' 查看历史 | 'load <id>' 加载[/yellow]
+        工作空间：{self.workspace},
+        """
         console.print(Panel.fit(
-            "[bold cyan]🤖 Code Agent - MCP 架构演进版[/bold cyan]\n"
-            "[yellow]输入 'quit' 退出 | 'new' 开启新会话 | 'sessions' 查看历史 | 'load <id>' 加载[/yellow]",
+            welcome_text,
             border_style="cyan"
         ))
 

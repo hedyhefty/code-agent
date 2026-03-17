@@ -27,7 +27,20 @@ class ChatCLI:
         self.running = True
         self.workspace = os.getcwd()
         self.repo_structure = self._get_repo_structure()
-        self.system_prompt = f"""
+        self.rule_file = "AGENT.md"  # 统一规则文件名
+        self.system_prompt = self._get_system_prompt()
+
+    def _get_system_prompt(self):
+        # 读取 AGENT.md (如果存在)
+        rules_content = ""
+        rule_path = os.path.join(self.workspace, self.rule_file)
+        if os.path.exists(rule_path):
+            try:
+                with open(rule_path, "r", encoding="utf-8") as f:
+                    rules_content = f.read()
+            except Exception as e:
+                logger.error(f"读取规则文件失败: {e}")
+        base_prompt = f"""
         你是一个顶级的软件工程师和架构师，现在作为 CLI 环境下的智能编程助手（Code Agent）运行。
         你的核心目标是通过逻辑严密的分析和使用提供的工具，独立完成或协助用户完成代码编写、重构、Bug修复和测试验证任务。
         请始终用专业、简洁的中文与用户沟通。
@@ -40,6 +53,9 @@ class ChatCLI:
 
         【项目的目录结构】
         {self.repo_structure}
+        
+        【项目特有规则与规范】
+        {rules_content}
 
         【工具使用规范】
         1. 职责分离：编写和修改文件请使用文件系统工具；执行完整的脚本请使用 `run_script_file`。
@@ -51,6 +67,7 @@ class ChatCLI:
         2. 闭环验证：如果你修改了代码，请主动寻找或编写对应的测试代码，调用执行工具来验证你的修改是否真正生效。
         3. 错误自愈：如果工具返回了报错信息（如 traceback 或权限拒绝），不要立刻向用户求助。仔细阅读报错，分析原因，尝试自我修复并重新执行。
         """
+        return base_prompt
 
     def _get_repo_structure(self, max_depth=10) -> str:
         """生成精简的项目目录结构摘要"""
@@ -113,14 +130,12 @@ class ChatCLI:
 
     async def chat_loop(self):
         self.print_welcome()
-
-        # --- 核心改动：在进入循环前启动所有的 MCP Server ---
         await self.client.startup()
         self.print_loaded_tools()
 
         try:
             while self.running:
-                user_input = Prompt.ask("[bold green]你[/bold green]").strip()
+                user_input = Prompt.ask("\n[bold green]你[/bold green]").strip()
                 if not user_input: continue
 
                 cmd = user_input.lower()
@@ -131,20 +146,35 @@ class ChatCLI:
                     self.client.history.start_new_session(self.system_prompt)
                     console.print("[green]已开启新会话[/green]")
                 elif cmd == 'sessions':
-                    sessions = self.client.history.list_sessions()
-                    console.print(f"[blue]历史会话: {sessions}[/blue]")
+                    # ... 现有的 sessions 逻辑
+                    pass
                 elif cmd.startswith('load '):
-                    sid = user_input.split(" ")[1]
-                    if self.client.history.load_session(sid):
-                        console.print(f"[green]已加载会话: {sid}[/green]")
-                    else:
-                        console.print("[red]会话不存在[/red]")
+                    # ... 现有的 load 逻辑
+                    pass
+                elif cmd == 'init' or cmd == '/init':
+                    # 【核心修改点】：构造一个伪装的用户输入，触发 Agent 的自主行为
+                    init_prompt = f"""
+                            用户请求初始化项目规则文件 `AGENT.md`。请你作为首席架构师执行以下完整工作流：
+
+                            1. 探索环境：使用你的文件系统工具（如 `list_directory`, `read_file`）扫描当前工作区({self.workspace})，识别项目的核心编程语言、框架（如 Java/Spring Boot、Python/FastAPI 或前端等）、依赖管理工具和测试框架。
+                            2. 制定规范：基于你探索到的技术栈，构思一份高质量的 AI 编程指南。必须包含：
+                               - 技术栈概述
+                               - 代码规范（命名、注释风格等）
+                               - 常用命令（构建、测试、运行命令）
+                               - AI Agent 行动准则（如：修改前必写测试、禁止直接修改生产配置等）
+                            3. 写入文件：使用 `write_file` 工具，将你构思好的 Markdown 内容写入到当前工作区根目录的 `AGENT.md` 文件中。
+                            4. 汇报结果：完成写入后，向用户简要汇报你识别到的技术栈，并告知规则文件已创建完毕。
+
+                            请立刻开始探索并执行，不要向用户提问，独立完成所有步骤。
+                            """
+                    console.print("[cyan]⚙️ 正在引导 Agent 探索工作区并生成规则...[/cyan]")
+                    # 直接把这个复杂的指令丢给你的 ReAct 循环
+                    await self.handle_chat(init_prompt)
                 else:
                     await self.handle_chat(user_input)
         except KeyboardInterrupt:
             console.print("\n[yellow]强制退出，正在清理资源...[/yellow]")
         finally:
-            # --- 核心改动：确保程序退出时杀掉所有的外部 Server 进程 ---
             await self.client.mcp_client.close()
 
 

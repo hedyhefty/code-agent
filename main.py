@@ -26,6 +26,7 @@ class ChatCLI:
         self.client = LLMClient()
         self.running = True
         self.workspace = os.getcwd()
+        self.repo_structure = self._get_repo_structure()
         self.system_prompt = f"""
         你是一个顶级的软件工程师和架构师，现在作为 CLI 环境下的智能编程助手（Code Agent）运行。
         你的核心目标是通过逻辑严密的分析和使用提供的工具，独立完成或协助用户完成代码编写、重构、Bug修复和测试验证任务。
@@ -37,6 +38,9 @@ class ChatCLI:
         2. 代码执行沙箱：你的代码执行工具（如 run_script_file）运行在隔离的 Linux Docker 容器中。
         3. ⚠️ 核心映射关系：宿主机的工作区目录已经被无缝挂载到容器内的 `/app/workspace`。这意味着你在宿主机写入的本地模块，可以直接在容器的该路径下被 `import` 和执行。
 
+        【项目的目录结构】
+        {self.repo_structure}
+
         【工具使用规范】
         1. 职责分离：编写和修改文件请使用文件系统工具；执行完整的脚本请使用 `run_script_file`。
         2. 参数传递：调用 `run_script_file` 运行带参数的脚本时，务必将命令行参数拆分并放入独立的 `args` 数组中，绝不可将参数硬拼接到 file_path 字符串内。
@@ -47,6 +51,29 @@ class ChatCLI:
         2. 闭环验证：如果你修改了代码，请主动寻找或编写对应的测试代码，调用执行工具来验证你的修改是否真正生效。
         3. 错误自愈：如果工具返回了报错信息（如 traceback 或权限拒绝），不要立刻向用户求助。仔细阅读报错，分析原因，尝试自我修复并重新执行。
         """
+
+    def _get_repo_structure(self, max_depth=10) -> str:
+        """生成精简的项目目录结构摘要"""
+        ignore_list = {'.git', '__pycache__', 'node_modules', '.venv', 'dist', '.gitignore', '.idea', 'venv'}
+        tree = []
+
+        def walk(path, depth):
+            if depth > max_depth: return
+            try:
+                for item in sorted(os.listdir(path)):
+                    if item in ignore_list: continue
+                    full_path = os.path.join(path, item)
+                    prefix = "  " * depth + "|- "
+                    if os.path.isdir(full_path):
+                        tree.append(f"{prefix}{item}/")
+                        walk(full_path, depth + 1)
+                    else:
+                        tree.append(f"{prefix}{item}")
+            except Exception:
+                pass
+
+        walk(self.workspace, 0)
+        return "\n".join(tree)
 
     def print_welcome(self):
         welcome_text = f"""

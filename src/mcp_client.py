@@ -64,12 +64,16 @@ class MCPClient:
             return
 
         for server_name, server_info in config.get("mcpServers", {}).items():
-            await self.connect_mcp_server(
-                server_name=server_name,
-                command=server_info["command"],
-                args=server_info["args"],
-                env=server_info.get("env")
-            )
+            try:
+                await self.connect_mcp_server(
+                    server_name=server_name,
+                    command=server_info["command"],
+                    args=server_info["args"],
+                    env=server_info.get("env")
+                )
+            except Exception as e:
+                logger.error(f"服务器 [{server_name}] 启动失败，跳过: {e}", exc_info=True)
+                continue  # 不阻断其他服务器
 
         logger.info(f"工具加载完成，共挂载 {len(self._tool_registry)} 个工具")
 

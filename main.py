@@ -22,8 +22,18 @@ logger.info("Code Agent 主程序启动")
 console = Console()
 
 
+def validate_env():
+    """校验必需的环境变量"""
+    required = ["LLM_API_KEY", "LLM_BASE_URL", "LLM_MODEL", "PROJECT_DIR"]
+    missing = [v for v in required if not os.getenv(v)]
+    if missing:
+        raise EnvironmentError(f"缺少必需环境变量: {missing}")
+
+
 class ChatCLI:
     def __init__(self):
+        validate_env()  # 先校验环境变量
+
         self.workspace = os.getcwd()
         os.environ["AGENT_WORKSPACE"] = self.workspace
         project_root = Path(__file__).resolve().parent

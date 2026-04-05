@@ -50,8 +50,9 @@ class LLMClient:
                     model=self.model,
                     messages=context,
                     stream=True,
-                    tools=self.mcp_client.get_schemas() or None,  # 如果没有工具，传 None 以防 API 报错
-                    tool_choice="auto" if self.mcp_client.get_schemas() else "none"
+                    tools=self.mcp_client.get_schemas() or None,
+                    tool_choice="auto" if self.mcp_client.get_schemas() else "none",
+                    timeout=300  # 5分钟超时，防止 API 卡死
                 )
 
                 full_response_content = ""

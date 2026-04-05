@@ -5,6 +5,8 @@ from typing import List
 
 
 class HistoryManager:
+    MAX_MESSAGES = 1000  # 最多保留消息条数
+
     def __init__(self, storage_dir="history"):
         project_dir = os.getenv("PROJECT_DIR")
         self.storage_dir = f"{project_dir}/{storage_dir}"
@@ -37,6 +39,21 @@ class HistoryManager:
             message["name"] = name
 
         self.current_messages.append(message)
+
+        # 超过阈值时裁剪旧消息（保留 system prompt）
+        if len(self.current_messages) > self.MAX_MESSAGES:
+            # 找到第一个非 system 消息的索引
+            first_non_system = 0
+            for i, msg in enumerate(self.current_messages):
+                if msg.get("role") != "system":
+                    first_non_system = i
+                    break
+            # 保留 system 消息 + 最近的消息
+            keep_count = self.MAX_MESSAGES - 1  # 留一个位置给 system
+            if first_non_system < keep_count:
+                self.current_messages = self.current_messages[:1] + self.current_messages[-(keep_count):]
+            else:
+                self.current_messages = self.current_messages[first_non_system:]
 
         if self.current_session_id:
             file_path = os.path.join(self.storage_dir, f"{self.current_session_id}.json")

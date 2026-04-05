@@ -5,16 +5,35 @@ from typing import Optional, List
 import docker
 from mcp.server.fastmcp import FastMCP
 
+import logging
+logger = logging.getLogger("CodeExecutor")
+
 # 初始化 FastMCP 和 Docker 客户端
 mcp = FastMCP("CodeExecutorServer")
 try:
     docker_client = docker.from_env()
 except docker.errors.DockerException:
-    print("警告: 无法连接到 Docker 守护进程。请确保 Docker 已启动。")
+    logger.warning("无法连接到 Docker 守护进程。请确保 Docker 已启动。")
     docker_client = None
 
+# 容器泄漏检测
+MAX_CONCURRENT_CONTAINERS = 10
 
-@mcp.tool()
+
+def _cleanup_leaked_containers():
+    """检测并清理异常退出的容器（每次执行前调用）"""
+    if not docker_client:
+        return
+    try:
+        containers = docker_client.containers.list(all=True)
+        for c in containers:
+            if c.status != "running" and c.name and c.name.startswith("python:"):
+                logger.warning(f"发现泄漏容器 {c.name}，正在清理")
+                c.remove(force=True)
+    except Exception:
+        pass
+
+
 def execute_python_code(code: str, timeout_seconds: int = 10) -> str:
     """
     在一个安全的 Docker 沙盒环境中执行 Python 代码并返回输出结果。
@@ -25,6 +44,9 @@ def execute_python_code(code: str, timeout_seconds: int = 10) -> str:
     """
     if not docker_client:
         return "执行失败: 宿主机未连接到 Docker 守护进程。"
+
+    # 每次执行前清理泄漏容器
+    _cleanup_leaked_containers()
 
     # 1. 将代码写入临时文件
     with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False, encoding='utf-8') as temp_file:

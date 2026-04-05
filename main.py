@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 from pathlib import Path
+from typing import List
 
 from dotenv import load_dotenv
 from rich.console import Console
@@ -22,7 +23,7 @@ logger.info("Code Agent 主程序启动")
 console = Console()
 
 
-def validate_env():
+def validate_env() -> None:
     """校验必需的环境变量"""
     required = ["LLM_API_KEY", "LLM_BASE_URL", "LLM_MODEL", "PROJECT_DIR"]
     missing = [v for v in required if not os.getenv(v)]
@@ -31,10 +32,10 @@ def validate_env():
 
 
 class ChatCLI:
-    def __init__(self):
-        validate_env()  # 先校验环境变量
+    def __init__(self) -> None:
+        validate_env()
 
-        self.workspace = os.getcwd()
+        self.workspace: str = os.getcwd()
         os.environ["AGENT_WORKSPACE"] = self.workspace
         project_root = Path(__file__).resolve().parent
         os.environ["PROJECT_ROOT"] = str(project_root)
@@ -42,11 +43,10 @@ class ChatCLI:
         self.client = LLMClient()
         self.running = True
         self.repo_structure = self._get_repo_structure()
-        self.rule_file = "AGENT.md"  # 统一规则文件名
+        self.rule_file = "AGENT.md"
         self.system_prompt = self._get_system_prompt()
 
-    def _get_system_prompt(self):
-        # 读取 AGENT.md (如果存在)
+    def _get_system_prompt(self) -> str:
         rules_content = ""
         rule_path = os.path.join(self.workspace, self.rule_file)
         if os.path.exists(rule_path):
@@ -68,7 +68,7 @@ class ChatCLI:
 
         【项目的目录结构】
         {self.repo_structure}
-        
+
         【项目特有规则与规范】
         {rules_content}
 
@@ -84,16 +84,17 @@ class ChatCLI:
         """
         return base_prompt
 
-    def _get_repo_structure(self, max_depth=10) -> str:
-        """生成精简的项目目录结构摘要"""
+    def _get_repo_structure(self, max_depth: int = 10) -> str:
         ignore_list = {'.git', '__pycache__', 'node_modules', '.venv', 'dist', '.gitignore', '.idea', 'venv'}
-        tree = []
+        tree: List[str] = []
 
-        def walk(path, depth):
-            if depth > max_depth: return
+        def walk(path: str, depth: int) -> None:
+            if depth > max_depth:
+                return
             try:
                 for item in sorted(os.listdir(path)):
-                    if item in ignore_list: continue
+                    if item in ignore_list:
+                        continue
                     full_path = os.path.join(path, item)
                     prefix = "  " * depth + "|- "
                     if os.path.isdir(full_path):
@@ -107,7 +108,7 @@ class ChatCLI:
         walk(self.workspace, 0)
         return "\n".join(tree)
 
-    def print_welcome(self):
+    def print_welcome(self) -> None:
         welcome_text = f"""
         [bold cyan]🤖 Code Agent - MCP 架构演进版[/bold cyan]
         [yellow]输入 'quit' 退出 | 'new' 开启新会话 | 'sessions' 查看历史 | 'load <id>' 加载[/yellow]
@@ -118,7 +119,7 @@ class ChatCLI:
             border_style="cyan"
         ))
 
-    def print_loaded_tools(self):
+    def print_loaded_tools(self) -> None:
         tools = self.client.mcp_client.get_schemas()
         if not tools:
             console.print("[red]警告：没有加载到任何工具！请检查 mcp_config.json 配置。[/red]")
@@ -126,7 +127,7 @@ class ChatCLI:
             console.print(
                 f"[green]成功通过 MCP 挂载 {len(tools)} 个工具：{[t['function']['name'] for t in tools]}[/green]")
 
-    async def handle_chat(self, user_input: str):
+    async def handle_chat(self, user_input: str) -> None:
         full_text = "🤔 思考中..."
         console.print("[bold cyan]助手[/bold cyan]")
 
@@ -143,7 +144,7 @@ class ChatCLI:
                     live.update(Markdown(full_text))
         console.print()
 
-    async def chat_loop(self):
+    async def chat_loop(self) -> None:
         self.print_welcome()
         await self.client.startup()
         self.print_loaded_tools()
@@ -151,7 +152,8 @@ class ChatCLI:
         try:
             while self.running:
                 user_input = Prompt.ask("\n[bold green]你[/bold green]").strip()
-                if not user_input: continue
+                if not user_input:
+                    continue
 
                 cmd = user_input.lower()
                 if cmd in ['quit', 'exit', 'q']:
@@ -161,13 +163,10 @@ class ChatCLI:
                     self.client.history.start_new_session(self.system_prompt)
                     console.print("[green]已开启新会话[/green]")
                 elif cmd == 'sessions':
-                    # ... 现有的 sessions 逻辑
                     pass
                 elif cmd.startswith('load '):
-                    # ... 现有的 load 逻辑
                     pass
                 elif cmd == 'init' or cmd == '/init':
-                    # 【核心修改点】：构造一个伪装的用户输入，触发 Agent 的自主行为
                     init_prompt = f"""
                             用户请求初始化项目规则文件 `AGENT.md`。请你作为首席架构师执行以下完整工作流：
 
@@ -184,7 +183,6 @@ class ChatCLI:
                             请立刻开始探索并执行，不要向用户提问，独立完成所有步骤。
                             """
                     console.print("[cyan]⚙️ 正在引导 Agent 探索工作区并生成规则...[/cyan]")
-                    # 直接把这个复杂的指令丢给你的 ReAct 循环
                     await self.handle_chat(init_prompt)
                 else:
                     await self.handle_chat(user_input)
@@ -194,7 +192,7 @@ class ChatCLI:
             await self.client.mcp_client.close()
 
 
-async def main():
+async def main() -> None:
     cli = ChatCLI()
     await cli.chat_loop()
 

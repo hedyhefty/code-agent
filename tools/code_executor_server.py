@@ -1,14 +1,13 @@
-import tempfile
+import logging
 import os
-from typing import Optional, List
+import tempfile
+from typing import List, Optional
 
 import docker
 from mcp.server.fastmcp import FastMCP
 
-import logging
 logger = logging.getLogger("CodeExecutor")
 
-# 初始化 FastMCP 和 Docker 客户端
 mcp = FastMCP("CodeExecutorServer")
 try:
     docker_client = docker.from_env()
@@ -16,11 +15,8 @@ except docker.errors.DockerException:
     logger.warning("无法连接到 Docker 守护进程。请确保 Docker 已启动。")
     docker_client = None
 
-# 容器泄漏检测
-MAX_CONCURRENT_CONTAINERS = 10
 
-
-def _cleanup_leaked_containers():
+def _cleanup_leaked_containers() -> None:
     """检测并清理异常退出的容器（每次执行前调用）"""
     if not docker_client:
         return
@@ -34,6 +30,7 @@ def _cleanup_leaked_containers():
         pass
 
 
+@mcp.tool()
 def execute_python_code(code: str, timeout_seconds: int = 10) -> str:
     """
     在一个安全的 Docker 沙盒环境中执行 Python 代码并返回输出结果。
@@ -45,29 +42,24 @@ def execute_python_code(code: str, timeout_seconds: int = 10) -> str:
     if not docker_client:
         return "执行失败: 宿主机未连接到 Docker 守护进程。"
 
-    # 每次执行前清理泄漏容器
     _cleanup_leaked_containers()
 
-    # 1. 将代码写入临时文件
     with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False, encoding='utf-8') as temp_file:
         temp_file.write(code)
         temp_file_path = temp_file.name
 
     container = None
     try:
-        # 2. 启动一次性容器执行代码
-        # 使用轻量级 alpine 镜像加速启动
         container = docker_client.containers.run(
             image="python:3.10-alpine",
-            command=f"python /app/script.py",
-            volumes={temp_file_path: {'bind': '/app/script.py', 'mode': 'ro'}},  # 只读挂载
+            command="python /app/script.py",
+            volumes={temp_file_path: {'bind': '/app/script.py', 'mode': 'ro'}},
             working_dir="/app",
             detach=True,
-            mem_limit="128m",  # 内存限制
-            network_disabled=True,  # 禁用网络，防止恶意下载或攻击
+            mem_limit="128m",
+            network_disabled=True,
         )
 
-        # 3. 等待执行完成并捕获输出
         result = container.wait(timeout=timeout_seconds)
         logs = container.logs().decode('utf-8')
 
@@ -80,14 +72,12 @@ def execute_python_code(code: str, timeout_seconds: int = 10) -> str:
     except docker.errors.ContainerError as e:
         return f"❌ 容器运行错误:\n{e.stderr.decode('utf-8') if e.stderr else str(e)}"
     except Exception as e:
-        # 处理超时等异常
         return f"⚠️ 执行中断: {str(e)}"
     finally:
-        # 4. 无论成功与否，强制清理容器和临时文件
         if container:
             try:
                 container.remove(force=True)
-            except:
+            except Exception:
                 pass
         if os.path.exists(temp_file_path):
             os.remove(temp_file_path)
@@ -97,35 +87,28 @@ def execute_python_code(code: str, timeout_seconds: int = 10) -> str:
 def run_script_file(host_workspace: str, file_path: str, args: Optional[List[str]] = None) -> str:
     """
     在隔离的容器中执行工作区内的 Python 脚本。
-    注意：此工具会自动处理宿主机到容器的路径映射。你只需要提供相对于 workspace 根目录的相对路径即可。
+    注意：此工具会自动处理宿主机到容器的路径映射。
 
     :param host_workspace: 工作空间的路径
     :param file_path: 脚本相对于工作区的路径 (例如: 'project/hello.py')
     :param args: 命令行参数列表 (例如: ['--verbose', '10'])
     """
-    # 1. 安全配置：定义宿主机和容器的映射路径
     container_workspace = "/app/workspace"
-
-    # 2. 路径安全校验：防止路径穿越攻击 (防止输入 ../../etc/passwd)
     safe_file_path = os.path.normpath(file_path).lstrip("/")
     full_container_path = os.path.join(container_workspace, safe_file_path)
 
-    # 3. 构造命令列表 (参数分离，避免注入风险)
-    # command 列表会被 Docker SDK 安全转义
-    command = ["python3", full_container_path]
+    command: List[str] = ["python3", full_container_path]
     if args:
         command.extend(args)
 
     try:
-        # 4. 运行容器
-        # 挂载宿主机工作区到容器内，并将其设为工作目录
         output = docker_client.containers.run(
             image="python:3.10-slim",
             command=command,
             volumes={host_workspace: {'bind': container_workspace, 'mode': 'rw'}},
             working_dir=container_workspace,
             detach=False,
-            remove=True  # 执行后自动删除容器
+            remove=True,
         )
         return f"✅ 执行成功:\n{output.decode('utf-8')}"
 
@@ -136,7 +119,6 @@ def run_script_file(host_workspace: str, file_path: str, args: Optional[List[str
 
 
 if __name__ == "__main__":
-    # 如果还没拉取过镜像，首次启动前拉取一下
     if docker_client:
         try:
             docker_client.images.get("python:3.10-alpine")

@@ -1,9 +1,10 @@
-from mcp.server.fastmcp import FastMCP
-from datetime import datetime
 import time
+from datetime import datetime
 
-# 初始化 FastMCP 实例
+from mcp.server.fastmcp import FastMCP
+
 mcp = FastMCP("TimeToolsServer")
+
 
 @mcp.tool()
 def get_current_time(time_format: str = "%Y-%m-%d %H:%M:%S") -> str:
@@ -13,11 +14,12 @@ def get_current_time(time_format: str = "%Y-%m-%d %H:%M:%S") -> str:
     """
     return datetime.now().strftime(time_format)
 
+
 @mcp.tool()
 def get_timezone() -> str:
     """获取系统当前设置的时区名称"""
     return time.tzname[0]
 
+
 if __name__ == "__main__":
-    # 启动 MCP 服务器（stdio 模式）
     mcp.run()

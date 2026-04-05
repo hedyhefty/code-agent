@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 from rich.console import Console
@@ -23,9 +24,13 @@ console = Console()
 
 class ChatCLI:
     def __init__(self):
+        self.workspace = os.getcwd()
+        os.environ["AGENT_WORKSPACE"] = self.workspace
+        project_root = Path(__file__).resolve().parent
+        os.environ["PROJECT_ROOT"] = str(project_root)
+
         self.client = LLMClient()
         self.running = True
-        self.workspace = os.getcwd()
         self.repo_structure = self._get_repo_structure()
         self.rule_file = "AGENT.md"  # 统一规则文件名
         self.system_prompt = self._get_system_prompt()
@@ -163,7 +168,8 @@ class ChatCLI:
                                - 常用命令（构建、测试、运行命令）
                                - AI Agent 行动准则（如：修改前必写测试、禁止直接修改生产配置等）
                             3. 写入文件：使用 `write_file` 工具，将你构思好的 Markdown 内容写入到当前工作区根目录的 `AGENT.md` 文件中。
-                            4. 汇报结果：完成写入后，向用户简要汇报你识别到的技术栈，并告知规则文件已创建完毕。
+                            4. 通过build_code_index工具初始化RAG索引，用于后续代码片段的快速检索
+                            5. 汇报结果：完成写入后，向用户简要汇报你识别到的技术栈，并告知规则文件已创建完毕。
 
                             请立刻开始探索并执行，不要向用户提问，独立完成所有步骤。
                             """

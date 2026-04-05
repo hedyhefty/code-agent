@@ -34,10 +34,10 @@ class MCPClient:
 
     async def load_tools(self, config_filename: str = "mcp_config.json"):
         """读取配置并连接所有 MCP Servers"""
-        project_root = self.get_project_root()
+        project_root = os.getenv("PROJECT_ROOT")
         # 2. 拼接出配置文件的绝对路径
         # 如果你的配置文件就在项目根目录下
-        config_path = project_root / config_filename
+        config_path = f"{project_root}/{config_filename}"
         try:
             with open(config_path, 'r', encoding='utf-8') as f:
                 # 1. 读取原始字符串
@@ -67,15 +67,26 @@ class MCPClient:
             await self.connect_mcp_server(
                 server_name=server_name,
                 command=server_info["command"],
-                args=server_info["args"]
+                args=server_info["args"],
+                env=server_info.get("env")
             )
 
         logger.info(f"工具加载完成，共挂载 {len(self._tool_registry)} 个工具")
 
-    async def connect_mcp_server(self, server_name: str, command: str, args: List[str]):
+    async def connect_mcp_server(self, server_name: str, command: str, args: List[str], env: dict = None):
         """连接单个 MCP Server 并提取工具 Schema"""
         logger.info(f"正在启动 MCP Server [{server_name}]: {command} {' '.join(args)}")
-        server_params = StdioServerParameters(command=command, args=args)
+
+        # 解析并替换 env 中的占位符
+        resolved_env = None
+        if env:
+            resolved_env = {}
+            for k, v in env.items():
+                resolved_env[k] = v.replace("${PROJECT_DIR}", os.getenv("PROJECT_DIR", ""))\
+                                   .replace("${AGENT_WORKSPACE}", os.getenv("AGENT_WORKSPACE", ""))
+            logger.info(f"MCP Server [{server_name}] 环境变量: {resolved_env}")
+
+        server_params = StdioServerParameters(command=command, args=args, env=resolved_env)
 
         try:
             # 1. 建立 stdio 传输通道

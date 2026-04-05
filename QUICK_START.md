@@ -38,9 +38,10 @@ python main.py
 
 ## 📋 核心功能
 
-- **MCP工具系统** - 标准化工具协议，支持动态加载
+- **MCP工具系统** - 标准化工具协议，支持动态加载（4个服务器）
 - **安全代码执行** - Docker沙箱隔离，内存限制128MB
 - **文件系统工具** - 安全的文件读写和目录操作
+- **RAG代码搜索** - 基于语义向量的代码检索
 - **ReAct循环** - 最多20轮推理，自动工具调用
 - **历史会话管理** - 保存、加载、查看对话历史
 
@@ -55,13 +56,21 @@ python main.py
 ```
 🤖 Code Agent - MCP架构演进版
 工作空间：/path/to/workspace
-成功通过 MCP 挂载 3 个工具
+成功通过 MCP 挂载 7 个工具
 
 你: 现在几点了？
-助手: 当前时间: 2026-03-16 23:15:32
+助手: 当前时间: 2026-04-05 14:30:00
+
+你: 帮我搜索项目中的登录校验逻辑
+助手:
+> ⚙️ **执行工具**: `semantic_search_code`
+✅ 搜索成功:
+--- 结果 1 | 文件: auth/service.py ---
+def verify_token(token: str) -> bool:
+    ...
 
 你: 执行Python代码计算2的10次方
-助手: 
+助手:
 > ⚙️ **执行工具**: `execute_python_code`
 ✅ 执行成功:
 print(2 ** 10)
@@ -74,6 +83,7 @@ print(2 ** 10)
 工具通过`mcp_config.json`配置：
 - **时间工具** - 获取当前时间和时区
 - **代码执行器** - Docker沙箱执行Python代码
+- **RAG搜索** - 代码语义搜索和索引构建
 - **文件系统** - 安全的文件操作（需要Node.js）
 
 ## 🏗️ 项目结构概览
@@ -82,7 +92,14 @@ print(2 ** 10)
 code-agent/
 ├── main.py              # 主程序入口
 ├── src/                 # 核心模块
+│   ├── llm_client.py   # LLM客户端（ReAct循环）
+│   └── mcp_client.py   # MCP客户端
 ├── tools/               # MCP服务器
+│   ├── time_tools_server.py    # 时间工具
+│   ├── code_executor_server.py # Docker沙箱
+│   ├── code_rag_server.py      # RAG搜索
+│   └── rag_service.py          # RAG核心服务
+├── models/              # Embedding模型
 ├── mcp_config.json      # 工具配置
 ├── history/             # 会话历史
 └── logs/                # 系统日志
@@ -92,11 +109,13 @@ code-agent/
 
 已实现步骤：
 1. ✅ 基础CLI对话界面
-2. ✅ 对话历史持久化  
+2. ✅ 对话历史持久化
 3. ✅ Tool Use / Function Calling（MCP架构）
 4. ✅ **安全代码执行工具**（Docker沙箱）
 5. ✅ **文件系统工具集**（MCP服务器）
 6. ✅ **ReAct / Agent循环**（20轮推理）
+7. 🔄 CLI交互体验升级（进行中）
+8. ✅ **代码库上下文优化**（RAG语义搜索）
 
 ## ⚠️ 重要提示
 

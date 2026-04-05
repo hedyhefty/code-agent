@@ -33,3 +33,7 @@ Thumbs.db
 /.idea
 /history
 /agent-workspace/
+/.mcp_cache/
+/models/
+/downloadmodel.py
+/CLAUDE.md

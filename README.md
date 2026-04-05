@@ -1,4 +1,4 @@
-# Code Agent - MCP架构演进版（第4-6步已实现）
+# Code Agent - MCP架构演进版（第4-6步已完成，第8步部分完成）
 
 基于LLM的CLI对话工具，采用MCP（Model Context Protocol）架构，实现了安全代码执行、文件系统工具和ReAct循环功能。
 
@@ -10,9 +10,10 @@
 - ✅ 支持系统提示词
 - ✅ 彩色终端界面（使用rich库）
 - ✅ 命令支持（sessions, load, new, quit）
-- ✅ **MCP工具系统** - 基于Model Context Protocol标准化工具集成
+- ✅ **MCP工具系统** - 基于Model Context Protocol标准化工具集成（4个服务器）
 - ✅ **安全代码执行** - 在Docker沙箱中隔离运行Python代码
 - ✅ **文件系统工具** - 通过MCP服务器提供安全的文件操作
+- ✅ **RAG代码搜索** - 基于语义向量的代码检索（ChromaDB + HuggingFace embeddings）
 - ✅ **ReAct循环架构** - 多轮推理（最多20步），自动工具调用与结果整合
 - ✅ **专业日志系统** - 执行日志文件
 
@@ -55,27 +56,29 @@ PROJECT_DIR=/path/to/code-agent  # 项目根目录路径
   "mcpServers": {
     "time_tools": {
       "command": "python3",
-      "args": [
-        "${PROJECT_DIR}/tools/time_tools_server.py"
-      ]
+      "args": ["${PROJECT_DIR}/tools/time_tools_server.py"]
     },
     "code_executor": {
       "command": "python3",
-      "args": [
-        "${PROJECT_DIR}/tools/code_executor_server.py"
-      ]
+      "args": ["${PROJECT_DIR}/tools/code_executor_server.py"]
+    },
+    "code_rag": {
+      "command": "python3",
+      "args": ["${PROJECT_DIR}/tools/code_rag_server.py"],
+      "env": {
+        "EMBEDDING_MODEL_PATH": "${PROJECT_DIR}/models/bge-small-zh-v1.5",
+        "RAG_DB_PATH": "${AGENT_WORKSPACE}/.mcp_cache/chroma_db"
+      }
     },
     "filesystem": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-filesystem",
-        "${AGENT_WORKSPACE}"
-      ]
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "${AGENT_WORKSPACE}"]
     }
   }
 }
 ```
+
+**RAG服务说明**：Embedding模型路径和向量数据库路径通过环境变量注入，支持多工作区配置。
 
 ## 运行
 
@@ -134,21 +137,24 @@ print(factorial(5))
 
 ```
 code-agent/
-├── main.py              # CLI主程序（集成MCP架构）
+├── main.py                    # CLI主程序（集成MCP架构）
 ├── src/
-│   ├── llm_client.py   # LLM客户端（支持MCP工具调用）
-│   ├── mcp_client.py   # MCP客户端实现
-│   ├── history_manager.py # 历史记录管理器
-│   └── logger.py       # 日志系统配置
-├── tools/              # MCP服务器实现
-│   ├── time_tools_server.py      # 时间工具MCP服务器
-│   └── code_executor_server.py   # 代码执行MCP服务器（Docker沙箱）
-├── mcp_config.json     # MCP服务器配置文件
-├── history/            # 历史会话存储目录
-├── logs/               # 日志文件存储目录
-├── requirements.txt    # Python依赖
-├── README.md          # 项目说明
-└── QUICK_START.md     # 快速开始指南
+│   ├── llm_client.py          # LLM客户端（ReAct循环，最多20步）
+│   ├── mcp_client.py          # MCP客户端（支持env参数传递）
+│   ├── history_manager.py     # 历史记录管理器
+│   └── logger.py              # 日志系统配置
+├── tools/                     # MCP服务器实现
+│   ├── time_tools_server.py   # 时间工具MCP服务器
+│   ├── code_executor_server.py # 代码执行MCP服务器（Docker沙箱）
+│   ├── code_rag_server.py      # RAG搜索MCP服务器
+│   └── rag_service.py         # RAG核心服务（ChromaDB + embeddings）
+├── models/                    # Embedding模型（bge-small-zh-v1.5）
+├── mcp_config.json            # MCP服务器配置文件
+├── history/                   # 历史会话存储目录
+├── logs/                      # 日志文件存储目录
+├── requirements.txt           # Python依赖
+├── CLAUDE.md                  # Claude Code工作指引
+└── QUICK_START.md            # 快速开始指南
 ```
 
 ## 技术栈
@@ -164,7 +170,7 @@ code-agent/
 
 ## 开发计划
 
-这是8步计划中的演进版，已实现第4-6步：
+这是8步计划中的演进版，已实现第4-6步，第8步部分完成：
 
 1. ✅ 基础CLI对话界面
 2. ✅ 对话历史持久化
@@ -173,7 +179,7 @@ code-agent/
 5. ✅ **文件系统工具集**（MCP文件系统服务器）
 6. ✅ **ReAct / Agent循环**（最多20轮推理）
 7. CLI交互体验升级
-8. 代码库上下文优化
+8. ✅ **代码库上下文优化**（RAG语义搜索 + `build_code_index` 工具）
 
 ## 安全注意事项
 
@@ -207,6 +213,11 @@ docker ps  # 测试Docker命令
 1. 检查`mcp_config.json`中的路径变量是否正确
 2. 确保`.env`文件中设置了`PROJECT_DIR`
 3. 检查Node.js和npx是否已安装
+
+### RAG服务启动失败
+- 确保 `AGENT_WORKSPACE` 环境变量已设置（用于 `RAG_DB_PATH`）
+- 检查 `models/bge-small-zh-v1.5` 目录是否存在
+- 查看启动日志中的 `[DEBUG]` 或 `环境变量` 输出
 
 ### 工具调用失败
 - 查看`logs/`目录下的日志文件

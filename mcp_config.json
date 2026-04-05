@@ -12,6 +12,16 @@
         "${PROJECT_DIR}/tools/code_executor_server.py"
       ]
     },
+    "code_rag": {
+      "command": "python3",
+      "args": [
+        "${PROJECT_DIR}/tools/code_rag_server.py"
+      ],
+      "env": {
+        "EMBEDDING_MODEL_PATH": "${PROJECT_DIR}/models/bge-small-zh-v1.5",
+        "RAG_DB_PATH": "${AGENT_WORKSPACE}/.mcp_cache/chroma_db"
+      }
+    },
     "filesystem": {
       "command": "npx",
       "args": [
